@@ -8,7 +8,7 @@
   6. Journey Guardian — milestone messages through the whole journey
 
 Run with:  python -m kallangflow.demo
-Needs GROQ_API_KEY set (see .env.example). Phases 1-5's non-LLM parts
+Needs AWS Bedrock credentials set (see .env.example). Phases 1-5's non-LLM parts
 (simulator + population + redistribution) still run and print without
 a key — only the agent's own reasoning/recommendation calls need it.
 """
@@ -30,7 +30,7 @@ from .tools import GUARDIAN_LOG
 
 load_dotenv()
 
-HAVE_KEY = bool(os.environ.get("GROQ_API_KEY"))
+HAVE_KEY = bool(os.environ.get("AWS_ACCESS_KEY_ID")) and bool(os.environ.get("BEDROCK_MODEL"))
 
 
 def header(title: str) -> None:
@@ -67,8 +67,8 @@ def run_demo() -> None:
         result = run_agent_for_attendee(demo_attendee, world, milestone="before")
         print("Recommendation:", result["recommendation"])
     else:
-        print("[GROQ_API_KEY not set — skipping live agent call. "
-              "Set it in .env to see the real recommendation here.]")
+        print("[AWS Bedrock credentials not set — skipping live agent call. "
+            "Set them in .env to see the real recommendation here.]")
 
     # ---------------------------------------------------------- STEP 2
     header("STEP 2 — DISRUPTION: an MRT line goes down")
@@ -112,8 +112,8 @@ def run_demo() -> None:
             # for a demo; a production version would parse the recommendation.
             a.assigned_transport_node = min(world.transport_nodes.values(), key=lambda n: n.load).id
     else:
-        print(f"[No API key — skipping the {REAL_BATCH_SIZE} real-agent calls, "
-              "using the statistical model for all attendees below.]")
+        print(f"[No Bedrock credentials — skipping the {REAL_BATCH_SIZE} real-agent calls, "
+          "using the statistical model for all attendees below.]")
 
     remaining = TOTAL_ATTENDEES - REAL_BATCH_SIZE
     simulated_split = redistribute_simulated(remaining, world, avoid_node="stadium_mrt")
@@ -148,7 +148,7 @@ def run_demo() -> None:
         for line in GUARDIAN_LOG:
             print(" ", line)
     else:
-        print("  [No guardian messages logged — run with GROQ_API_KEY set.]")
+        print("  [No guardian messages logged — run with AWS Bedrock credentials set.]")
 
     header("DEMO COMPLETE")
 

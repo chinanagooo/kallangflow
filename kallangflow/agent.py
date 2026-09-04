@@ -12,7 +12,7 @@ from typing import Annotated, TypedDict
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
-from langchain_groq import ChatGroq
+from langchain_aws import ChatBedrockConverse
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
@@ -21,14 +21,12 @@ from .tools import make_tools, notify_guardian
 
 load_dotenv()
 
-
-def chat_model(temperature: float = 0) -> ChatGroq:
-    return ChatGroq(
-        model=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
+def chat_model(temperature: float = 0) -> ChatBedrockConverse:
+    return ChatBedrockConverse(
+        model=os.environ.get("BEDROCK_MODEL", "us.anthropic.claude-haiku-4-5-20251001-v1:0"),
+        region_name=os.environ.get("AWS_REGION", "ap-southeast-1"),
         temperature=temperature,
-        api_key=os.environ.get("GROQ_API_KEY"),
     )
-
 
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
@@ -69,11 +67,18 @@ def monitor_node(state: AgentState) -> dict:
         f"node(s) and gate(s) are relevant to this attendee right now."
     )
 
-    messages = [SystemMessage(SYSTEM_MONITOR), HumanMessage(prompt)]
+    # This scratch list holds the raw tool-calling loop (toolUse/toolResult blocks).
+    # It stays LOCAL to this node — it is never merged into the graph's shared
+    # state["messages"], because passing raw tool-call blocks to a model invoked
+    # later without a bound toolConfig causes Bedrock's Converse API to silently
+    # return empty content (see README "Architecture notes").
+    scratch = [SystemMessage(SYSTEM_MONITOR), HumanMessage(prompt)]
+    summary_text = ""
     for _ in range(3):  # bounded ReAct loop — see Session 2 "the cap is the safety net"
-        reply = model.invoke(messages)
-        messages.append(reply)
+        reply = model.invoke(scratch)
+        scratch.append(reply)
         if not reply.tool_calls:
+            summary_text = reply.content
             break
         for call in reply.tool_calls:
             fn = by_name.get(call["name"])
@@ -84,8 +89,14 @@ def monitor_node(state: AgentState) -> dict:
                     result = fn.invoke(call["args"])
                 except Exception as exc:  # tool misuse must not crash the run
                     result = f"{call['name']} failed: {exc}"
-            messages.append(ToolMessage(result, tool_call_id=call["id"]))
-    return {"messages": messages}
+            scratch.append(ToolMessage(result, tool_call_id=call["id"]))
+    else:
+        # loop exhausted without a clean final reply — fall back to whatever text we have
+        summary_text = getattr(scratch[-1], "content", "") or "No findings captured."
+
+    # Only a clean, tool-call-free summary is passed downstream.
+    clean_summary = HumanMessage(f"Monitoring findings: {summary_text}")
+    return {"messages": [clean_summary]}
 
 
 # ---------------------------------------------------------------- PREDICT
