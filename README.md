@@ -28,7 +28,34 @@ python -m kallangflow.demo
 
 ## Setup
 
-### 1. Install dependencies
+Instructions below apply to both Windows and macOS; anywhere a command
+differs, both are given.
+
+### 1. Install Python and dependencies
+
+**macOS:**
+
+If you don't already have Python 3 (check with `python3 --version`),
+install it via [Homebrew](https://brew.sh):
+
+```
+brew install python
+```
+
+It's recommended to use a virtual environment rather than installing
+packages system-wide:
+
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+You'll need to run `source .venv/bin/activate` again in any new terminal
+tab/window before running the project (your prompt will show `(.venv)`
+when it's active).
+
+**Windows:**
 
 ```
 pip install -r requirements.txt
@@ -38,7 +65,9 @@ If you hit `ModuleNotFoundError` for something already listed in
 `requirements.txt` (e.g. `dotenv`, `langgraph`, `langchain-aws`), it usually
 means packages were installed piecemeal rather than via the full
 `pip install -r` command above — re-run the full install to be sure
-everything's actually present.
+everything's actually present (on macOS, also double check your virtual
+environment is activated — a common cause of "it's installed but Python
+can't find it").
 
 ### 2. Configure AWS Bedrock access
 
@@ -50,6 +79,12 @@ backend via `langchain-aws`'s `ChatBedrockConverse`. You need:
 - Credentials the AWS SDK (`boto3`) can find — either a normal AWS profile,
   or (common for hackathon/training sandbox accounts) a set of **temporary**
   credentials issued via a sandbox portal.
+
+If you don't have the AWS CLI installed yet:
+
+- **macOS:** `brew install awscli`
+- **Windows:** download the MSI installer from AWS's official site, or
+  `winget install Amazon.AWSCLI`
 
 #### If you have a normal AWS account
 
@@ -85,9 +120,18 @@ set of all three values from the portal and overwrite all three lines in
 
 ### 3. Set environment variables
 
-Create a `.env` file in the project root (**not** `.env.txt` — on Windows,
-Notepad's Save dialog defaults to appending `.txt` unless you explicitly
-choose "Save as type: All Files"). Use `.env.example` as a starting point:
+Create a `.env` file in the project root. Use `.env.example` as a starting
+point:
+
+- **macOS:** `cp .env.example .env` in Terminal, then edit it with any text
+  editor (`nano .env`, `open -e .env`, or `code .env` if using VS Code).
+  Files starting with `.` are hidden in Finder by default — if you want to
+  see it there too, press `Cmd+Shift+.` in Finder to toggle hidden files.
+- **Windows:** copy `.env.example` to `.env`, then edit — but **not** with
+  a plain double-click into Notepad's Save dialog, since Notepad defaults
+  to appending `.txt` unless you explicitly choose "Save as type: All
+  Files". Using `copy .env.example .env` in PowerShell first, then editing
+  the existing `.env` file, avoids this trap entirely.
 
 ```
 AWS_ACCESS_KEY_ID=ASIA...
@@ -119,6 +163,22 @@ Notes:
   too — the AWS CLI does **not** read `.env` automatically, so set the
   three `AWS_*` values as shell env vars first if you haven't run
   `aws configure`):
+
+  **macOS/Linux (bash/zsh):**
+  ```
+  export AWS_ACCESS_KEY_ID="<your key>"
+  export AWS_SECRET_ACCESS_KEY="<your secret>"
+  export AWS_SESSION_TOKEN="<your token>"
+  ```
+
+  **Windows (PowerShell):**
+  ```
+  $env:AWS_ACCESS_KEY_ID="<your key>"
+  $env:AWS_SECRET_ACCESS_KEY="<your secret>"
+  $env:AWS_SESSION_TOKEN="<your token>"
+  ```
+
+  Then, on either platform:
 
   ```
   aws bedrock list-foundation-models --region us-east-1 \
@@ -193,7 +253,7 @@ agent's own reasoning/recommendation calls are skipped, with a clear
 | `botocore.errorfactory.ValidationException: The provided model identifier is invalid` | `AWS_REGION` doesn't match the region prefix (`us.`/`apac.`/etc.) of `BEDROCK_MODEL`. |
 | `botocore.exceptions.ClientError: ... ExpiredTokenException: The security token included in the request is expired` | Sandbox/temporary credentials have expired (often within a few hours). Fetch fresh Access Key ID + Secret Access Key + Session Token from your sandbox portal and overwrite all three lines in `.env`. |
 | `botocore.errorfactory.ResourceNotFoundException: This model version has reached the end of its life` | The pinned model ID has been retired by AWS. Re-check `aws bedrock list-foundation-models` / `list-inference-profiles` for a current one. |
-| `aws sts get-caller-identity` → `Unable to locate credentials` | The AWS CLI does not read `.env` files automatically (unlike the Python app, via `python-dotenv`). Either run `aws configure`, or set `$env:AWS_ACCESS_KEY_ID` / `$env:AWS_SECRET_ACCESS_KEY` / `$env:AWS_SESSION_TOKEN` in your shell session before running CLI commands. |
+| `aws sts get-caller-identity` → `Unable to locate credentials` | The AWS CLI does not read `.env` files automatically (unlike the Python app, via `python-dotenv`). Either run `aws configure`, or set the three `AWS_*` values in your shell session before running CLI commands — `export AWS_ACCESS_KEY_ID=...` (macOS/Linux) or `$env:AWS_ACCESS_KEY_ID="..."` (Windows PowerShell). |
 | `python -c "...boto3.Session().get_credentials()..."` prints `None` | `.env` is missing, misnamed (check for a stray `.env.txt`), not in the current working directory, or missing one of the three `AWS_*` credential lines. |
 | `RuntimeWarning: Tool messages were passed without toolConfig` + empty `recommendation` (`reply.content == []`) | A node is invoking the model on message history containing raw tool-call blocks without also binding tools. Fixed by keeping `monitor_node`'s tool-calling loop in a local scratch list and returning only a clean text summary to `state["messages"]` — see Architecture notes above. |
 | `IndentationError` after editing `demo.py` | Check that every `if HAVE_KEY: / else:` pair is aligned to the same indentation level, and that `else:` isn't accidentally attached to a nested `for` loop instead of the intended `if`. |
