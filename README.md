@@ -1,70 +1,203 @@
-# KallangFlow — working MVP
+# KallangFlow
 
-A software-only, simulation-based agentic AI system for coordinating crowd
-movement at Singapore's major events (Kallang precinct). Built on
-LangGraph + Groq (swap to AWS Bedrock by changing `chat_model()` in
-`kallangflow/agent.py` — see the hackathon's `section_3_bedrock` labs).
+Agentic crowd-flow simulation for event journeys, built on LangGraph. Each
+attendee gets a personal LangGraph agent that runs a
+Monitor → Predict → Recommend → Act → Adapt loop, using live LLM calls
+(**Amazon Bedrock**, Claude models via `langchain-aws`) to reason about
+transport disruptions, gate congestion, and personalised recommendations.
 
-**Everything transport/crowd-related here is SIMULATED** (`kallangflow/simulator.py`).
-There is no live Singapore transport feed in this MVP — that's flagged
-in the demo output and should be flagged on your slides too.
+## What this is
 
-## What's implemented
+- `kallangflow/simulator.py` — synthetic world state (transport nodes, gates,
+  disruptions). All data is SYNTHETIC, not a live feed.
+- `kallangflow/agent.py` — the LangGraph agent definition, one graph per
+  attendee. Builds its Bedrock chat client via `chat_model()`.
+- `kallangflow/population.py` — statistical modelling for simulating the
+  full 50,000-attendee scale from a small real-agent sample.
+- `kallangflow/demo.py` — scripted 6-step end-to-end demo.
+- `tests/test_core.py` — non-LLM tests (simulator, population, tools). No
+  AWS credentials needed to run these.
 
-| Module | What it does |
-|---|---|
-| `models.py` | Attendee, TransportNode, Gate, Facility, WorldState — plain dataclasses |
-| `simulator.py` | Simulated crowd buildup, disruptions, 8-min congestion projection |
-| `population.py` | Synthetic 50,000-attendee population + the redistribution logic behind the "50,000 agents" story |
-| `tools.py` | The 6 tools the agent can call (transport status, gate congestion, weather, facility queues, route estimate, guardian notify) |
-| `agent.py` | The LangGraph loop: **Monitor → Predict → Recommend → Act → Adapt**, bounded and tool-call-safe |
-| `demo.py` | Scripted 6-step demo matching the MVP scenario in the pitch |
+Run the demo with:
 
-## Setup
-
-```bash
-cd kallangflow
-python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-# edit .env and paste your Groq key from console.groq.com
 ```
-
-## Run the non-LLM sanity tests (no API key needed)
-
-```bash
-python -m tests.test_core
-```
-This exercises the simulator, population/redistribution math, and all
-tool functions directly — everything except the actual model calls.
-
-## Run the full scripted demo (needs GROQ_API_KEY)
-
-```bash
 python -m kallangflow.demo
 ```
 
-Without a key set, the demo still runs and prints the simulated
-crowd/transport data and the before/after redistribution chart — it
-just skips the live LLM recommendation/guardian-message calls and
-tells you so inline, so you can sanity-check everything else first.
+---
 
-## What to say if a judge asks "is this real data?"
+## Setup
 
-No — Singapore doesn't expose live MRT/crowd data publicly, so the
-transport and crowd figures are a deterministic simulator
-(`simulator.py`) designed to produce realistic pre-event buildup and
-post-event exodus curves. The **agent architecture and reasoning are
-real**: a live LangGraph loop actually calls tools, actually reads
-changing congestion state, and actually changes its recommendation
-when you inject a disruption live (Step 2/3 of the demo). Swapping the
-simulator for a real feed later is a `simulator.py`-only change — the
-agent and tool interfaces don't need to change.
+### 1. Install dependencies
 
-## Next steps (see the earlier build-sequence doc, Phases 5–9)
+```
+pip install -r requirements.txt
+```
 
-- Wire `act_node`'s guardian messages into a small Streamlit dashboard
-  showing attendee view + family view side by side (Phase 7)
-- Optional: refactor into a DeepAgents supervisor with journey/venue/guardian
-  sub-agents (Phase 6) — requires Bedrock/Claude, not Groq
-- Optional: deploy via Bedrock AgentCore for a live HTTPS endpoint (Phase 9, Step 35)
+If you hit `ModuleNotFoundError` for something already listed in
+`requirements.txt` (e.g. `dotenv`, `langgraph`, `langchain-aws`), it usually
+means packages were installed piecemeal rather than via the full
+`pip install -r` command above — re-run the full install to be sure
+everything's actually present.
+
+### 2. Configure AWS Bedrock access
+
+This project uses **Amazon Bedrock** (Anthropic Claude models) as its LLM
+backend via `langchain-aws`'s `ChatBedrockConverse`. You need:
+
+- An AWS account/sandbox with Bedrock model access enabled for at least one
+  Claude model, in a region you can confirm has that access.
+- Credentials the AWS SDK (`boto3`) can find — either a normal AWS profile,
+  or (common for hackathon/training sandbox accounts) a set of **temporary**
+  credentials issued via a sandbox portal.
+
+#### If you have a normal AWS account
+
+```
+aws configure
+```
+
+or, for SSO-based accounts:
+
+```
+aws configure sso
+aws sso login --profile <your-profile>
+```
+
+#### If you have a sandbox/training account with a web portal
+
+(e.g. AWS Skill Builder / Innovation Sandbox style portals)
+
+These typically issue **temporary** credentials (Access Key ID + Secret
+Access Key + **Session Token**) directly from a web page, rather than
+supporting `aws configure sso` or `aws sso login`. **Do not run
+`aws configure` or `aws login`** for this kind of account — there's nothing
+to log into. Instead, look for a "Command line or programmatic access" link
+on the portal and copy all **three** values into your `.env` file directly
+(see step 3). A session token is required for temporary credentials —
+omitting it is a common cause of silent auth failures.
+
+These credentials **expire** (often within a few hours). If Bedrock calls
+that were working suddenly start failing with `ExpiredTokenException`, this
+is the first thing to check — see "Troubleshooting" below. Fetch a fresh
+set of all three values from the portal and overwrite all three lines in
+`.env` (don't mix old and new values).
+
+### 3. Set environment variables
+
+Create a `.env` file in the project root (**not** `.env.txt` — on Windows,
+Notepad's Save dialog defaults to appending `.txt` unless you explicitly
+choose "Save as type: All Files"). Use `.env.example` as a starting point:
+
+```
+AWS_ACCESS_KEY_ID=ASIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=...
+AWS_REGION=us-east-1
+BEDROCK_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0
+```
+
+Notes:
+
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` are
+  only needed if you're not using a locally-configured AWS profile (e.g.
+  sandbox-issued temporary credentials). Omit them if `aws configure` /
+  `aws sso login` already set up credentials your machine can find globally.
+- **`AWS_REGION` must match the region prefix of `BEDROCK_MODEL`.**
+  Cross-region inference profile IDs are prefixed `us.`, `apac.`, `eu.`,
+  etc. A `us.`-prefixed model ID will fail with
+  `ValidationException: The provided model identifier is invalid` if
+  `AWS_REGION` is set to a non-US region (e.g. `ap-southeast-1`), even
+  though the model genuinely exists and is enabled on your account. This
+  was the single most time-consuming issue during initial setup — check
+  this first if you see that specific error. If your sandbox is based
+  outside the US, the simplest fix is usually to keep `AWS_REGION=us-east-1`
+  and a `us.`-prefixed model — Bedrock inference profiles don't require you
+  to be physically located where the region is.
+- To see what Claude models/profiles are actually available on your
+  account in a given region (this works with sandbox env-var credentials
+  too — the AWS CLI does **not** read `.env` automatically, so set the
+  three `AWS_*` values as shell env vars first if you haven't run
+  `aws configure`):
+
+  ```
+  aws bedrock list-foundation-models --region us-east-1 \
+    --query "modelSummaries[?contains(modelId, 'claude')].modelId" --output table
+  aws bedrock list-inference-profiles --region us-east-1 \
+    --query "inferenceProfileSummaries[?contains(inferenceProfileId, 'claude')].inferenceProfileId" --output table
+  ```
+
+  Prefer a dated, pinned model ID/profile (e.g.
+  `us.anthropic.claude-haiku-4-5-20251001-v1:0`) over a bare alias where
+  possible — models do get retired
+  (`ResourceNotFoundException: This model version has reached the end of
+  its life`), and a pinned ID makes that failure mode explicit rather than
+  silently drifting.
+
+### 4. Verify before running the full demo
+
+Cheapest possible sanity check — one LLM call, no LangGraph, no tools:
+
+```
+python -c "from dotenv import load_dotenv; load_dotenv(); from kallangflow.agent import chat_model; print(chat_model().invoke('Say hello in one sentence.').content)"
+```
+
+This should print a real sentence. If it errors, resolve that before
+running `python -m kallangflow.demo` — debugging inside the full 6-step,
+multi-agent demo is much slower than isolating the problem here first.
+
+### 5. Run
+
+```
+python -m kallangflow.demo
+```
+
+Phases 1–5's non-LLM parts (simulator, population modelling, redistribution
+math) run and print correctly even without valid AWS credentials — only the
+agent's own reasoning/recommendation calls are skipped, with a clear
+`[AWS Bedrock credentials not set — ...]` message in their place. The
+`HAVE_KEY` gate in `demo.py` checks for `AWS_ACCESS_KEY_ID` and
+`BEDROCK_MODEL` being set, not any Groq-related variable.
+
+---
+
+## Architecture notes
+
+- **Model client caching**: `chat_model()` in `agent.py` caches the
+  `ChatBedrockConverse` client per temperature setting, rather than
+  reconstructing it (and its underlying boto3 client) on every node call.
+- **Tool-call message hygiene**: only `monitor_node` binds tools and
+  produces `toolUse`/`toolResult` message blocks. That raw tool-calling
+  loop is kept in a **local scratch list**, not merged into the graph's
+  shared `state["messages"]` — only a clean, plain-text summary is passed
+  downstream to `predict_node` / `recommend_node`. Passing raw tool-call
+  history to a model invoked without a bound `toolConfig` causes Bedrock's
+  Converse API to emit `RuntimeWarning: Tool messages were passed without
+  toolConfig` and can silently return an empty response
+  (`reply.content == []`) instead of raising an error.
+- **Step 5 concurrency**: the 10 real per-attendee agent runs (each a full
+  Monitor→Adapt LangGraph invocation) execute concurrently via
+  `ThreadPoolExecutor`, since Bedrock calls are I/O-bound. Note this means
+  the shared `WorldState` object is read (and, depending on tool
+  implementation, possibly written) from multiple threads concurrently
+  during that step — acceptable for demo purposes, but not thread-safe by
+  design.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+| --- | --- |
+| `ModuleNotFoundError: No module named 'X'` | Packages installed piecemeal instead of via `pip install -r requirements.txt`. Re-run the full install. |
+| `botocore.errorfactory.ValidationException: The provided model identifier is invalid` | `AWS_REGION` doesn't match the region prefix (`us.`/`apac.`/etc.) of `BEDROCK_MODEL`. |
+| `botocore.exceptions.ClientError: ... ExpiredTokenException: The security token included in the request is expired` | Sandbox/temporary credentials have expired (often within a few hours). Fetch fresh Access Key ID + Secret Access Key + Session Token from your sandbox portal and overwrite all three lines in `.env`. |
+| `botocore.errorfactory.ResourceNotFoundException: This model version has reached the end of its life` | The pinned model ID has been retired by AWS. Re-check `aws bedrock list-foundation-models` / `list-inference-profiles` for a current one. |
+| `aws sts get-caller-identity` → `Unable to locate credentials` | The AWS CLI does not read `.env` files automatically (unlike the Python app, via `python-dotenv`). Either run `aws configure`, or set `$env:AWS_ACCESS_KEY_ID` / `$env:AWS_SECRET_ACCESS_KEY` / `$env:AWS_SESSION_TOKEN` in your shell session before running CLI commands. |
+| `python -c "...boto3.Session().get_credentials()..."` prints `None` | `.env` is missing, misnamed (check for a stray `.env.txt`), not in the current working directory, or missing one of the three `AWS_*` credential lines. |
+| `RuntimeWarning: Tool messages were passed without toolConfig` + empty `recommendation` (`reply.content == []`) | A node is invoking the model on message history containing raw tool-call blocks without also binding tools. Fixed by keeping `monitor_node`'s tool-calling loop in a local scratch list and returning only a clean text summary to `state["messages"]` — see Architecture notes above. |
+| `IndentationError` after editing `demo.py` | Check that every `if HAVE_KEY: / else:` pair is aligned to the same indentation level, and that `else:` isn't accidentally attached to a nested `for` loop instead of the intended `if`. |
+
+## About
+
+No description, website, or topics provided.
