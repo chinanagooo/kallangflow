@@ -314,4 +314,4 @@ agent's own reasoning/recommendation calls are skipped, with a clear
 
 ## About
 
-No description, website, or topics provided.
+Agentic crowd-flow simulator for event journeys, made possible through LangGraph agents on Amazon Bedrock. Journeys are customiseable via user input. Created by the Techtitans2 team for the SimplifyNext Agentic AI Hackathon 2026.
