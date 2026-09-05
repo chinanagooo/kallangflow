@@ -14,6 +14,7 @@
     background: #fafaf8;
   }
   h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  h2 { font-size: 15px; font-weight: 500; margin: 0 0 12px; }
   p.sub { color: #6b6b68; font-size: 14px; margin-top: 0; }
   .grid {
     display: grid;
@@ -42,6 +43,23 @@
     border: 1px solid #e3e1d8;
     border-radius: 12px;
     padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: #6b6b68;
+    margin-bottom: 4px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #d3d1c7;
+    font-size: 14px;
+    box-sizing: border-box;
+    background: #fff;
   }
   .attendee-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .avatar {
@@ -61,14 +79,15 @@
   }
   button:hover { background: #f1efe8; }
   button:disabled { opacity: 0.6; cursor: default; }
-  #result {
+  #result, #save-status {
     display: none;
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid #e3e1d8;
     font-size: 14px;
   }
-  #result.error { color: #791f1f; }
+  #result.error, #save-status.error { color: #791f1f; }
+  #save-status.success { color: #27500a; }
   .note { font-size: 12px; color: #9a988e; margin-top: 12px; }
 </style>
 </head>
@@ -82,18 +101,45 @@
 </div>
 
 <div class="card">
+  <h2>Your journey profile</h2>
+  <div class="field">
+    <label for="home_location">Home location</label>
+    <input type="text" id="home_location" placeholder="e.g. Tampines">
+  </div>
+  <div class="field">
+    <label for="transport_preference">Preferred transport</label>
+    <select id="transport_preference">
+      <option value="mrt">MRT</option>
+      <option value="bus">Bus</option>
+      <option value="taxi">Taxi / ride-hailing</option>
+      <option value="any">Any</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="accessibility_needs">Accessibility needs (optional)</label>
+    <input type="text" id="accessibility_needs" placeholder="e.g. step-free access">
+  </div>
+  <div class="field">
+    <label for="travelling_with">Travelling with anyone needing extra care? (optional)</label>
+    <input type="text" id="travelling_with" placeholder="e.g. elderly parent">
+  </div>
+  <button id="save-btn" onclick="saveProfile()">Save profile</button>
+  <div id="save-status"></div>
+</div>
+
+<div class="card">
   <div class="attendee-row">
     <div class="avatar">AT</div>
     <div>
-      <p style="font-weight: 500; margin: 0; font-size: 15px;">Attendee A-DEMO</p>
-      <p style="font-size: 13px; color: #6b6b68; margin: 0;">Home: Tampines &middot; prefers MRT</p>
+      <p style="font-weight: 500; margin: 0; font-size: 15px;">Your journey</p>
+      <p style="font-size: 13px; color: #6b6b68; margin: 0;">Uses the profile saved above</p>
     </div>
   </div>
   <button id="plan-btn" onclick="planJourney()">Plan my journey</button>
   <div id="result"></div>
 </div>
 
-<p class="note">Node loads refresh from <code>/api/world</code>. The recommendation comes from a real LangGraph agent call to Amazon Bedrock via <code>/api/plan</code> — expect a few seconds while it runs.</p>
+<p class="note">Node loads refresh from <code>/api/world</code>. Your profile is saved to a local database via <code>/api/attendee</code>. The recommendation comes from a real LangGraph agent call to Amazon Bedrock via <code>/api/plan</code> — expect a few seconds while it runs.</p>
 
 <script>
 async function loadWorld() {
@@ -116,6 +162,60 @@ async function loadWorld() {
   } catch (err) {
     grid.innerHTML = '<p style="color:#791f1f;">Could not load node data.</p>';
   }
+}
+
+async function loadProfile() {
+  try {
+    const res = await fetch('/api/attendee');
+    const profile = await res.json();
+    if (profile) {
+      document.getElementById('home_location').value = profile.home_location || '';
+      document.getElementById('transport_preference').value = profile.transport_preference || 'mrt';
+      document.getElementById('accessibility_needs').value = profile.accessibility_needs || '';
+      document.getElementById('travelling_with').value = profile.travelling_with || '';
+    }
+  } catch (err) {
+    // no saved profile yet, or request failed — form just stays blank/default
+  }
+}
+
+async function saveProfile() {
+  const status = document.getElementById('save-status');
+  const home_location = document.getElementById('home_location').value.trim();
+
+  if (!home_location) {
+    status.textContent = 'Enter a home location first.';
+    status.className = 'error';
+    status.style.display = 'block';
+    return;
+  }
+
+  const payload = {
+    home_location: home_location,
+    transport_preference: document.getElementById('transport_preference').value,
+    accessibility_needs: document.getElementById('accessibility_needs').value.trim(),
+    travelling_with: document.getElementById('travelling_with').value.trim(),
+  };
+
+  try {
+    const res = await fetch('/api/attendee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) {
+      status.textContent = data.error;
+      status.className = 'error';
+    } else {
+      status.textContent = 'Profile saved.';
+      status.className = 'success';
+    }
+  } catch (err) {
+    status.textContent = 'Could not reach the server.';
+    status.className = 'error';
+  }
+  status.style.display = 'block';
 }
 
 async function planJourney() {
@@ -147,6 +247,7 @@ async function planJourney() {
 }
 
 loadWorld();
+loadProfile();
 </script>
 
 </body>

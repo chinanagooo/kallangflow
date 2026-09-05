@@ -14,15 +14,50 @@ transport disruptions, gate congestion, and personalised recommendations.
   attendee. Builds its Bedrock chat client via `chat_model()`.
 - `kallangflow/population.py` — statistical modelling for simulating the
   full 50,000-attendee scale from a small real-agent sample.
-- `kallangflow/demo.py` — scripted 6-step end-to-end demo.
+- `kallangflow/demo.py` — scripted 6-step end-to-end demo. Now prompts
+  interactively for the attendee's profile (see "Personalisation" below).
+- `kallangflow/db.py` — SQLite persistence for attendee profiles, shared
+  between `demo.py` and `app.py`.
+- `app.py` — minimal Flask web app: a dashboard of transport node
+  congestion, a profile form, and a "Plan my journey" button that calls
+  the real LangGraph agent (same Bedrock calls as the CLI demo).
+- `templates/index.html` — the single page `app.py` serves.
 - `tests/test_core.py` — non-LLM tests (simulator, population, tools). No
   AWS credentials needed to run these.
 
-Run the demo with:
+Run the CLI demo with:
 
 ```
 python -m kallangflow.demo
 ```
+
+Or run the web app:
+
+```
+python app.py
+```
+then open `http://localhost:5000`.
+
+### Personalisation
+
+Attendee profiles (home location, transport preference, accessibility
+needs, who they're travelling with) are no longer hardcoded. Both
+`demo.py` and `app.py` read/write the same SQLite database,
+**`attendees.db`**, created automatically at the project root the first
+time either one runs:
+
+- **`demo.py`**: on first run, prompts for each field one at a time and
+  saves the result. On later runs, detects the saved profile and asks
+  `Reuse this profile? [Y/n]` instead of asking again.
+- **`app.py`**: a "Your journey profile" form on the page — `GET
+  /api/attendee` loads the saved profile to prefill it, `POST
+  /api/attendee` saves whatever's submitted. `/api/plan` then uses
+  whichever profile is currently saved.
+
+Both currently share one fixed attendee id (`"A-DEMO"`) — this is "one
+shared profile for whoever's using the app right now", not per-user
+accounts. Delete `attendees.db` any time to wipe all saved profiles and
+start fresh.
 
 ---
 
@@ -68,6 +103,16 @@ means packages were installed piecemeal rather than via the full
 everything's actually present (on macOS, also double check your virtual
 environment is activated — a common cause of "it's installed but Python
 can't find it").
+
+If you want to run the web app (`app.py`), also install Flask:
+
+```
+pip install flask
+```
+
+(and add it to `requirements.txt` if it isn't already there). No extra
+package is needed for the SQLite persistence — `sqlite3` is part of the
+Python standard library.
 
 ### 2. Configure AWS Bedrock access
 
@@ -242,6 +287,15 @@ agent's own reasoning/recommendation calls are skipped, with a clear
   implementation, possibly written) from multiple threads concurrently
   during that step — acceptable for demo purposes, but not thread-safe by
   design.
+- **Attendee persistence**: `db.py` is one flat SQLite table, no ORM, no
+  migrations — intentionally simple for a single-attendee-at-a-time demo.
+  SQLite handles concurrent writers poorly; a real multi-user version would
+  want a proper database (e.g. Postgres) plus per-user accounts, not one
+  shared `"A-DEMO"` row.
+- **`app.py`'s in-memory `world`** has the same single-process caveat as
+  before: fine for `python app.py`'s dev server, but multiple `gunicorn`
+  workers (or multiple machines) would each get their own disconnected copy
+  — see the "shared world state" note from the architecture discussion.
 
 ---
 
