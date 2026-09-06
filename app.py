@@ -1,18 +1,13 @@
 """Minimal Flask web app wrapping the KallangFlow agent.
 
-Run with:  python app.py
-Then open: http://localhost:5000
-
-This is a starting point, not a production deployment. See the notes
-inline below for what would need to change before real multi-user use.
+This is meant for sandbox testing purely.
 
 Attendee profiles are saved to the same SQLite database (attendees.db,
-via kallangflow/db.py) that demo.py uses — a profile set up through this
-web form is what demo.py will offer to reuse, and vice versa.
+via kallangflow/db.py) that demo.py uses — a profile set up through 
+user input through the web application. 
 
 Simulated clock: world.current_time_minutes now advances on its own in
-real time (scaled up, so you don't have to wait real hours to see the
-event progress), and a "fast-forward" button lets you jump ahead
+real time, with a button to step ahead the internal clock within the system
 instantly for demo purposes. Both paths update the same world object
 that agent.py's monitor_node reads when building its prompt, so the
 agent's next call genuinely reflects the new time — no agent.py changes
@@ -37,28 +32,16 @@ app = Flask(__name__)
 init_db()
 
 # --------------------------------------------------------------------
-# Event milestones. Change these two lines to move the whole simulation
-# — the LLM agent already reads world.event_start_minutes /
-# world.event_end_minutes when building its prompt (see agent.py's
-# monitor_node), so no agent.py changes are needed to shift these.
-# --------------------------------------------------------------------
-EVENT_START_MINUTES = 19 * 60       # 19:00
-EVENT_END_MINUTES = 22 * 60         # 22:00
-
-# --------------------------------------------------------------------
 # Shared world state, held in memory for this single Flask process.
-#
-# NOTE: this only works because Flask's dev server runs one process /
-# one worker. If you deploy this behind gunicorn with multiple workers,
-# or scale to multiple machines, each worker gets its OWN copy of
-# `world` and they will disagree with each other. Before doing that,
-# move this into something genuinely shared — Redis, a small database,
-# or a single dedicated process the workers talk to over an internal API.
 # --------------------------------------------------------------------
+EVENT_START_MINUTES = 19 * 60      # 19:00
+EVENT_END_MINUTES = 22 * 60        # 22:00
+
 world = create_world_state(
     event_start_minutes=EVENT_START_MINUTES,
     event_end_minutes=EVENT_END_MINUTES,
 )
+
 simulate_crowd_buildup(world)
 
 # Still one fixed attendee id for this demo — a real app would look
@@ -165,30 +148,27 @@ def fast_forward():
         "current_time_display": format_clock(world.current_time_minutes),
     })
 
-
 @app.route("/api/reset-time", methods=["POST"])
 def reset_time():
-    """Fully reset the simulation: rebuilds `world` from scratch (fresh
-    transport nodes, gates, no disruptions) AND resets the clock back to
-    its original starting point.
+    """Reset the simulated clock AND transport/crowd state."""
 
-    This has to rebuild the whole world, not just the clock, because
-    simulate_crowd_buildup() ratchets node/gate load upward with max() —
-    load never decreases on its own, by design, so it doesn't fall back
-    down just because the clock display goes back to an earlier time.
-    Resetting only CLOCK left load values stuck wherever they'd already
-    climbed to from prior polling/fast-forwarding — this is the actual
-    fix for that."""
     global world
-    world = create_world_state(
-        event_start_minutes=EVENT_START_MINUTES,
-        event_end_minutes=EVENT_END_MINUTES,
-    )
-    simulate_crowd_buildup(world)
 
+    # Reset the clock
     CLOCK["real_start"] = time.time()
-    CLOCK["sim_start_minutes"] = world.current_time_minutes
     CLOCK["manual_offset_minutes"] = 0
+
+    # Create a completely fresh world using the same event times.
+    world = create_world_state(
+        event_start_minutes=world.event_start_minutes,
+        event_end_minutes=world.event_end_minutes,
+    )
+
+    # Put the fresh world at its initial simulated time.
+    world.current_time_minutes = CLOCK["sim_start_minutes"]
+
+    # Recalculate crowd levels from the clean state.
+    simulate_crowd_buildup(world)
 
     return jsonify({
         "current_time_minutes": world.current_time_minutes,
@@ -212,40 +192,70 @@ def get_attendee_route():
 
 @app.route("/api/attendee", methods=["POST"])
 def save_attendee_route():
-    """Save (or overwrite) the attendee's profile from the form.
-
-    transport_preference now accepts a comma-separated list (e.g.
-    "bus,walk") to match the multi-select transport chips in the UI —
-    people can genuinely be fine with more than one mode. Still stored
-    as a single string field on Attendee/in the database; only the
-    validation and the set of allowed tokens changed here."""
+    """Save (or overwrite) the attendee's profile from the form."""
     data = request.get_json(silent=True) or {}
+
     home_location = (data.get("home_location") or "").strip()
-    transport_preference_raw = (data.get("transport_preference") or "mrt").strip().lower()
-    accessibility_needs = (data.get("accessibility_needs") or "").strip() or None
-    travelling_with = (data.get("travelling_with") or "").strip() or None
+
+    # Frontend allows multiple transport selections.
+    transport_preference = data.get("transport_preference") or ["mrt"]
+
+    if isinstance(transport_preference, str):
+        transport_preference = [transport_preference]
+
+    # Flatten comma-separated values coming from the frontend.
+    transport_options = []
+
+    for option in transport_preference:
+        for value in str(option).split(","):
+            value = value.strip().lower()
+            if value:
+                transport_options.append(value)
+
+    transport_preference = transport_options
+
+    accessibility_needs = (
+        data.get("accessibility_needs") or ""
+    ).strip() or None
+
+    travelling_with = (
+        data.get("travelling_with") or ""
+    ).strip() or None
 
     if not home_location:
         return jsonify({"error": "Home location is required."}), 400
 
-    allowed_modes = {"mrt", "bus", "walk", "taxi", "cycling"}
-    modes = [m.strip() for m in transport_preference_raw.split(",") if m.strip()]
-    if not modes or any(m not in allowed_modes for m in modes):
+    allowed_transport = {
+        "mrt",
+        "bus",
+        "walk",
+        "taxi",
+        "cycling",
+    }
+
+    invalid_transport = [
+        option for option in transport_preference
+        if option not in allowed_transport
+    ]
+
+    if invalid_transport:
         return jsonify({
-            "error": "Preferred transport must be one or more of: mrt, bus, walk, taxi, cycling."
+            "error": f"Invalid transport option: {', '.join(invalid_transport)}"
         }), 400
-    transport_preference = ",".join(modes)
+
+    transport_preference_string = ",".join(transport_preference)
 
     attendee = Attendee(
         id=DEMO_ATTENDEE_ID,
         home_location=home_location,
-        transport_preference=transport_preference,
+        transport_preference=transport_preference_string,
         accessibility_needs=accessibility_needs,
         travelling_with=travelling_with,
     )
-    save_attendee(attendee)
-    return jsonify({"status": "saved"})
 
+    save_attendee(attendee)
+
+    return jsonify({"status": "saved"})
 
 @app.route("/api/plan", methods=["POST"])
 def plan_journey():
@@ -258,9 +268,25 @@ def plan_journey():
     (monitor -> predict -> recommend)."""
     sync_world_clock()
     attendee = get_attendee(DEMO_ATTENDEE_ID) or _default_attendee()
+
     try:
-        result = run_agent_for_attendee(attendee, world, milestone="before")
+        current = world.current_time_minutes
+
+        if current < world.event_start_minutes:
+            milestone = "before"
+        elif current < world.event_end_minutes:
+            milestone = "gate"
+        else:
+            milestone = "after"
+
+        result = run_agent_for_attendee(
+            attendee,
+            world,
+            milestone=milestone
+        )
+
         return jsonify({"recommendation": result["recommendation"]})
+
     except Exception as exc:
         # Surface the real error message during development. Before any
         # real deployment, log the full exception server-side and return
