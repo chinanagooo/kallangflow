@@ -5,10 +5,6 @@ saved from one is immediately visible to the other — they share the
 same attendees.db file, created automatically at the project root
 (next to app.py) the first time init_db() runs.
 
-This is intentionally simple: one flat table, no ORM, no migrations.
-Good enough for a single-attendee-at-a-time demo; a multi-user
-production version would want proper migrations and probably a
-non-SQLite database (SQLite handles concurrent writers poorly).
 """
 from __future__ import annotations
 
