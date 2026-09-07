@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <style>
   :root {
@@ -22,13 +23,12 @@
     --amber-light: #FDF0DA;
     --red: #E5484D;
     --red-light: #FCE9E9;
+    --blue: #3D6FF2;
     --line: #E1EEEB;
     --line-strong: #C8DEDA;
   }
 
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
     font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -40,43 +40,17 @@
     line-height: 1.5;
   }
 
-  .app {
-    max-width: 460px;
-    margin: 0 auto;
-  }
+  .app { max-width: 460px; margin: 0 auto; }
 
-  .header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
+  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
   .logo {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    background: var(--teal);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    font-size: 20px;
-    flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 14px;
+    background: var(--teal); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 20px; flex-shrink: 0;
   }
-
-  .header h1 {
-    font-size: 19px;
-    font-weight: 800;
-    margin: 0;
-  }
-
-  .header p {
-    font-size: 13px;
-    color: var(--ink-soft);
-    margin: 0;
-  }
+  .header h1 { font-size: 19px; font-weight: 800; margin: 0; }
+  .header p { font-size: 13px; color: var(--ink-soft); margin: 0; }
 
   .card {
     background: var(--card);
@@ -86,29 +60,10 @@
     box-shadow: 0 2px 12px rgba(30, 42, 42, 0.06);
   }
 
-  h2 {
-    font-size: 20px;
-    font-weight: 800;
-    margin: 0 0 6px;
-  }
-
-  .screen-sub {
-    font-size: 14px;
-    color: var(--ink-soft);
-    margin: 0 0 18px;
-  }
-
-  h3 {
-    font-size: 15px;
-    font-weight: 700;
-    margin: 0 0 4px;
-  }
-
-  .hint {
-    font-size: 13px;
-    color: var(--ink-soft);
-    margin: 0 0 12px;
-  }
+  h2 { font-size: 20px; font-weight: 800; margin: 0 0 6px; }
+  .screen-sub { font-size: 14px; color: var(--ink-soft); margin: 0 0 18px; }
+  h3 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+  .hint { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }
 
   .field input {
     width: 100%;
@@ -120,396 +75,78 @@
     background: #fff;
     color: var(--ink);
   }
+  .field input:focus { outline: none; border-color: var(--teal); }
 
-  .field input:focus {
-    outline: none;
-    border-color: var(--teal);
-  }
+  .chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .chip-card { border: 2px solid var(--line); border-radius: 14px; padding: 14px 10px; text-align: center; cursor: pointer; background: #fff; }
+  .chip-card .icon { font-size: 24px; margin-bottom: 6px; }
+  .chip-card .label { font-size: 14px; font-weight: 700; }
+  .chip-card .selected-tag { font-size: 12px; font-weight: 700; color: var(--teal-dark); margin-top: 2px; display: none; }
+  .chip-card.selected { border-color: var(--teal); background: var(--teal-light); }
+  .chip-card.selected .selected-tag { display: block; }
 
-  .chip-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 12px;
-  }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .pill { border: 2px solid var(--line); border-radius: 20px; padding: 8px 14px; font-size: 14px; font-weight: 700; background: #fff; color: var(--ink); cursor: pointer; }
+  .pill.selected { border-color: var(--teal); background: var(--teal-light); color: var(--teal-dark); }
 
-  .chip-card {
-    border: 2px solid var(--line);
-    border-radius: 14px;
-    padding: 14px 10px;
-    text-align: center;
-    cursor: pointer;
-    background: #fff;
-  }
+  .check-row { display: flex; align-items: center; gap: 12px; border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; }
+  .check-row.selected { border-color: var(--teal); background: var(--teal-light); }
+  .check-box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--line-strong); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; color: #fff; }
+  .check-row.selected .check-box { background: var(--teal); border-color: var(--teal); }
+  .check-row span.label { font-size: 15px; font-weight: 600; }
 
-  .chip-card .icon {
-    font-size: 24px;
-    margin-bottom: 6px;
-  }
+  .btn { width: 100%; padding: 16px; border-radius: 18px; border: none; font-size: 17px; font-weight: 800; font-family: inherit; cursor: pointer; }
+  .btn-primary { background: var(--teal); color: #fff; }
+  .btn-primary:hover { background: var(--teal-dark); }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .btn-secondary { background: var(--teal-light); color: var(--teal-dark); }
+  .btn-secondary:hover { background: #d3efe9; }
+  .btn-ghost { background: transparent; color: var(--ink-soft); box-shadow: none; padding: 10px; }
 
-  .chip-card .label {
-    font-size: 14px;
-    font-weight: 700;
-  }
+  #form-error { display: none; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--red-light); color: var(--red); font-size: 14px; font-weight: 600; }
 
-  .chip-card .selected-tag {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--teal-dark);
-    margin-top: 2px;
-    display: none;
-  }
+  .check-circle { width: 64px; height: 64px; border-radius: 50%; background: var(--teal-light); color: var(--teal-dark); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; }
+  .saved-heading { text-align: center; font-size: 22px; font-weight: 800; margin: 0 0 6px; }
+  .saved-sub { text-align: center; font-size: 14px; color: var(--ink-soft); margin: 0 0 20px; }
+  .summary-box { background: var(--bg); border-radius: 16px; padding: 16px; margin-bottom: 20px; }
+  .summary-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+  .summary-row:last-child { margin-bottom: 0; }
+  .summary-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+  .summary-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 2px; }
+  .summary-value { font-size: 15px; font-weight: 700; margin: 0; }
 
-  .chip-card.selected {
-    border-color: var(--teal);
-    background: var(--teal-light);
-  }
+  .clock-card { background: var(--teal); color: #fff; display: flex; align-items: center; justify-content: space-between; }
+  .clock-card .clock-label { font-size: 14px; font-weight: 600; opacity: 0.9; margin: 0 0 4px; }
+  .clock-card .clock-time { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ff-buttons { display: flex; flex-direction: column; gap: 8px; }
+  .ff-btn { background: rgba(255,255,255,0.22); color: #fff; border: none; border-radius: 14px; padding: 8px 14px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; width: auto; }
+  .ff-btn:hover { background: rgba(255,255,255,0.32); }
+  .ff-btn.reset { background: rgba(255,255,255,0.9); color: var(--teal-dark); }
+  .ff-btn.reset:hover { background: #fff; }
 
-  .chip-card.selected .selected-tag {
-    display: block;
-  }
+  .node-list { display: flex; flex-direction: column; gap: 14px; }
+  .node-row { display: flex; align-items: center; gap: 12px; }
+  .node-info { flex: 1; min-width: 0; }
+  .node-name { font-size: 15px; font-weight: 700; margin: 0 0 6px; }
+  .node-bar-track { background: var(--line); border-radius: 8px; height: 10px; overflow: hidden; }
+  .node-bar-fill { height: 100%; border-radius: 8px; }
+  .node-pct { font-size: 15px; font-weight: 800; min-width: 46px; text-align: right; }
+  .tag { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; margin-top: 4px; }
+  .tag.low { background: var(--teal-light); color: var(--teal-dark); }
+  .tag.moderate { background: var(--amber-light); color: #A96A00; }
+  .tag.high { background: var(--red-light); color: var(--red); }
 
-  .pill-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-  }
+  #route-map { height: 280px; border-radius: 16px; margin-top: 8px; }
 
-  .pill {
-    border: 2px solid var(--line);
-    border-radius: 20px;
-    padding: 8px 14px;
-    font-size: 14px;
-    font-weight: 700;
-    background: #fff;
-    color: var(--ink);
-    cursor: pointer;
-  }
+  #result { display: none; margin-top: 14px; padding: 14px 16px; border-radius: 14px; font-size: 15px; font-weight: 600; background: var(--teal-light); color: var(--teal-dark); }
+  #result.error { background: var(--red-light); color: var(--red); }
+  #result h4 { margin: 0 0 8px; font-size: 15px; }
+  #result p { margin: 0 0 10px; font-weight: 600; }
+  #result p:last-child { margin-bottom: 0; }
+  #result strong { color: var(--teal-dark); }
 
-  .pill.selected {
-    border-color: var(--teal);
-    background: var(--teal-light);
-    color: var(--teal-dark);
-  }
-
-  .check-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border: 2px solid var(--line);
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    cursor: pointer;
-  }
-
-  .check-row.selected {
-    border-color: var(--teal);
-    background: var(--teal-light);
-  }
-
-  .check-box {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: 2px solid var(--line-strong);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 14px;
-    color: #fff;
-  }
-
-  .check-row.selected .check-box {
-    background: var(--teal);
-    border-color: var(--teal);
-  }
-
-  .check-row span.label {
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  .btn {
-    width: 100%;
-    padding: 16px;
-    border-radius: 18px;
-    border: none;
-    font-size: 17px;
-    font-weight: 800;
-    font-family: inherit;
-    cursor: pointer;
-  }
-
-  .btn-primary {
-    background: var(--teal);
-    color: #fff;
-  }
-
-  .btn-primary:hover {
-    background: var(--teal-dark);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-
-  .btn-secondary {
-    background: var(--teal-light);
-    color: var(--teal-dark);
-  }
-
-  .btn-secondary:hover {
-    background: #d3efe9;
-  }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--ink-soft);
-    box-shadow: none;
-    padding: 10px;
-  }
-
-  #form-error {
-    display: none;
-    margin-top: 12px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    background: var(--red-light);
-    color: var(--red);
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  /* Saved confirmation screen */
-
-  .check-circle {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: var(--teal-light);
-    color: var(--teal-dark);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    margin: 0 auto 16px;
-  }
-
-  .saved-heading {
-    text-align: center;
-    font-size: 22px;
-    font-weight: 800;
-    margin: 0 0 6px;
-  }
-
-  .saved-sub {
-    text-align: center;
-    font-size: 14px;
-    color: var(--ink-soft);
-    margin: 0 0 20px;
-  }
-
-  .summary-box {
-    background: var(--bg);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 20px;
-  }
-
-  .summary-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .summary-row:last-child {
-    margin-bottom: 0;
-  }
-
-  .summary-icon {
-    font-size: 18px;
-    width: 24px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .summary-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--ink-soft);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    margin: 0 0 2px;
-  }
-
-  .summary-value {
-    font-size: 15px;
-    font-weight: 700;
-    margin: 0;
-  }
-
-  /* Journey screen */
-
-  .clock-card {
-    background: var(--teal);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .clock-card .clock-label {
-    font-size: 14px;
-    font-weight: 600;
-    opacity: 0.9;
-    margin: 0 0 4px;
-  }
-
-  .clock-card .clock-time {
-    font-size: 32px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .ff-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .ff-btn {
-    background: rgba(255,255,255,0.22);
-    color: #fff;
-    border: none;
-    border-radius: 14px;
-    padding: 8px 14px;
-    font-size: 14px;
-    font-weight: 700;
-    font-family: inherit;
-    cursor: pointer;
-    width: auto;
-  }
-
-  .ff-btn:hover {
-    background: rgba(255,255,255,0.32);
-  }
-
-  .ff-btn.reset {
-    background: rgba(255,255,255,0.9);
-    color: var(--teal-dark);
-  }
-
-  .ff-btn.reset:hover {
-    background: #fff;
-  }
-
-  .node-list {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .node-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .node-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .node-name {
-    font-size: 15px;
-    font-weight: 700;
-    margin: 0 0 6px;
-  }
-
-  .node-bar-track {
-    background: var(--line);
-    border-radius: 8px;
-    height: 10px;
-    overflow: hidden;
-  }
-
-  .node-bar-fill {
-    height: 100%;
-    border-radius: 8px;
-  }
-
-  .node-pct {
-    font-size: 15px;
-    font-weight: 800;
-    min-width: 46px;
-    text-align: right;
-  }
-
-  .tag {
-    font-size: 12px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 20px;
-    display: inline-block;
-    margin-top: 4px;
-  }
-
-  .tag.low {
-    background: var(--teal-light);
-    color: var(--teal-dark);
-  }
-
-  .tag.moderate {
-    background: var(--amber-light);
-    color: #A96A00;
-  }
-
-  .tag.high {
-    background: var(--red-light);
-    color: var(--red);
-  }
-
-  #result {
-    display: none;
-    margin-top: 14px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    font-size: 15px;
-    font-weight: 600;
-    background: var(--teal-light);
-    color: var(--teal-dark);
-    white-space: pre-wrap;
-  }
-
-  #result.error {
-    background: var(--red-light);
-    color: var(--red);
-  }
-
-  #result p {
-    margin: 0 0 10px;
-  }
-
-  #result p:last-child {
-    margin-bottom: 0;
-  }
-
-  #result strong {
-    color: var(--teal-dark);
-  }
-
-  .screen {
-    display: none;
-  }
-
-  .screen.active {
-    display: block;
-  }
+  .screen { display: none; }
+  .screen.active { display: block; }
 </style>
 </head>
 
@@ -525,28 +162,18 @@
     </div>
   </div>
 
-
   <!-- SCREEN 1: profile form -->
-
   <div class="screen active" id="screen-form">
 
     <div class="card">
       <h2>Your journey profile</h2>
-      <p class="screen-sub">
-        Tell us a bit about how you travel so we can guide you better.
-      </p>
-
+      <p class="screen-sub">Tell us a bit about how you travel so we can guide you better.</p>
       <div class="field" style="margin-bottom: 20px;">
         <h3>Home location</h3>
         <p class="hint">e.g. Tampines, Bedok, Jurong East</p>
-        <input
-          type="text"
-          id="home_location"
-          placeholder="Jurong"
-        >
+        <input type="text" id="home_location" placeholder="Jurong">
       </div>
     </div>
-
 
     <div class="card">
       <h3>Preferred transport</h3>
@@ -554,1097 +181,564 @@
       <div class="chip-grid" id="transport-grid"></div>
     </div>
 
-
     <div class="card">
-      <h3>
-        Accessibility needs
-        <span style="font-weight:400; color:var(--ink-soft);">
-          (optional)
-        </span>
-      </h3>
-
-      <p class="hint">
-        e.g. step-free access, wheelchair accessible —
-        or pick from suggestions below
-      </p>
-
-      <input
-        type="text"
-        id="accessibility_custom"
-        placeholder="Step-free access"
-      >
-
+      <h3>Accessibility needs <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></h3>
+      <p class="hint">e.g. step-free access, wheelchair accessible — or pick from suggestions below</p>
+      <input type="text" id="accessibility_custom" placeholder="Step-free access">
       <div class="pill-row" id="accessibility-pills"></div>
     </div>
 
-
     <div class="card">
-      <h3>
-        Travelling with someone who needs extra care?
-        <span style="font-weight:400; color:var(--ink-soft);">
-          (optional)
-        </span>
-      </h3>
-
-      <p class="hint">
-        e.g. elderly parent, young child
-      </p>
-
+      <h3>Travelling with someone who needs extra care? <span style="font-weight:400; color:var(--ink-soft);">(optional)</span></h3>
+      <p class="hint">e.g. elderly parent, young child</p>
       <div id="travelling-checks"></div>
     </div>
 
-
-    <button
-      class="btn btn-primary"
-      onclick="saveProfile()"
-    >
-      Save profile
-    </button>
-
+    <button class="btn btn-primary" onclick="saveProfile()">Save profile</button>
     <div id="form-error"></div>
-
   </div>
-
 
   <!-- SCREEN 2: saved confirmation -->
-
   <div class="screen" id="screen-saved">
-
     <div class="card">
-
       <div class="check-circle">✓</div>
-
-      <p class="saved-heading">
-        Profile saved!
-      </p>
-
-      <p class="saved-sub">
-        Your journey profile is ready.
-        KallangFlow will use this to personalise
-        your travel experience.
-      </p>
-
+      <p class="saved-heading">Profile saved!</p>
+      <p class="saved-sub">Your journey profile is ready. KallangFlow will use this to personalise your travel experience.</p>
 
       <div class="summary-box">
-
         <div class="summary-row">
           <div class="summary-icon">🏠</div>
-
-          <div>
-            <p class="summary-label">Home</p>
-            <p class="summary-value" id="summary-home">—</p>
-          </div>
+          <div><p class="summary-label">Home</p><p class="summary-value" id="summary-home">—</p></div>
         </div>
-
-
         <div class="summary-row">
           <div class="summary-icon">🗺️</div>
-
-          <div>
-            <p class="summary-label">Transport</p>
-            <p class="summary-value" id="summary-transport">—</p>
-          </div>
+          <div><p class="summary-label">Transport</p><p class="summary-value" id="summary-transport">—</p></div>
         </div>
-
-
         <div class="summary-row">
           <div class="summary-icon">♿</div>
-
-          <div>
-            <p class="summary-label">Accessibility</p>
-            <p class="summary-value" id="summary-accessibility">—</p>
-          </div>
+          <div><p class="summary-label">Accessibility</p><p class="summary-value" id="summary-accessibility">—</p></div>
         </div>
-
-
         <div class="summary-row">
           <div class="summary-icon">👥</div>
-
-          <div>
-            <p class="summary-label">Travelling with</p>
-            <p class="summary-value" id="summary-travelling">—</p>
-          </div>
+          <div><p class="summary-label">Travelling with</p><p class="summary-value" id="summary-travelling">—</p></div>
         </div>
-
       </div>
 
-
-      <button
-        class="btn btn-primary"
-        onclick="goToJourney()"
-      >
-        Plan my journey →
-      </button>
-
-
-      <button
-        class="btn btn-secondary"
-        style="margin-top: 10px;"
-        onclick="editProfile()"
-      >
-        Edit profile
-      </button>
-
+      <button class="btn btn-primary" onclick="goToJourney()">Plan my journey →</button>
+      <button class="btn btn-secondary" style="margin-top: 10px;" onclick="editProfile()">Edit profile</button>
     </div>
-
   </div>
 
-
   <!-- SCREEN 3: journey / recommendation -->
-
   <div class="screen" id="screen-journey">
-
-    <button
-      class="btn btn-ghost"
-      onclick="showScreen('saved')"
-      style="width:auto; margin-bottom: 8px;"
-    >
-      &larr; Back
-    </button>
-
-
-    <!-- Simulated clock -->
+    <button class="btn btn-ghost" onclick="showScreen('saved')" style="width:auto; margin-bottom: 8px;">&larr; Back</button>
 
     <div class="card clock-card">
-
       <div>
-        <p class="clock-label">
-          Simulated time
-        </p>
-
-        <div
-          class="clock-time"
-          id="clock-time"
-        >
-          --:--
-        </div>
+        <p class="clock-label">Simulated time</p>
+        <div class="clock-time" id="clock-time">--:--</div>
       </div>
-
-
       <div class="ff-buttons">
-
-        <button
-          class="ff-btn"
-          onclick="fastForward(30)"
-        >
-          +30 min
-        </button>
-
-        <button
-          class="ff-btn"
-          onclick="fastForward(120)"
-        >
-          +2 hr
-        </button>
-
-        <button
-          class="ff-btn reset"
-          onclick="resetTime()"
-        >
-          Reset
-        </button>
-
+        <button class="ff-btn" onclick="fastForward(30)">+30 min</button>
+        <button class="ff-btn" onclick="fastForward(120)">+2 hr</button>
+        <button class="ff-btn reset" onclick="resetTime()">Reset</button>
       </div>
-
     </div>
 
-
-    <!-- Transport data -->
-
     <div class="card">
-
       <h3>Getting there</h3>
-
-      <div
-        class="node-list"
-        id="node-grid"
-        style="margin-top: 14px;"
-      ></div>
-
+      <div class="node-list" id="node-grid" style="margin-top: 14px;"></div>
     </div>
-
-
-    <!-- LLM recommendation -->
 
     <div class="card">
-
-      <h3>Your recommendation</h3>
-
-      <p class="hint">
-        Personalised for your profile,
-        at the current simulated time.
-      </p>
-
-      <button
-        class="btn btn-primary"
-        id="plan-btn"
-        onclick="planJourney()"
-      >
-        Get my recommendation
-      </button>
-
-      <div id="result"></div>
-
+      <h3>Route map</h3>
+      <p class="hint">Real Kallang precinct locations, with an accessibility-aware walking route.</p>
+      <div id="route-map"></div>
+      <p class="hint" id="route-mode-note" style="margin-top: 8px; margin-bottom: 0;">Get a recommendation below to see the route.</p>
     </div>
 
+    <div class="card">
+      <h3>Your recommendation</h3>
+      <p class="hint">Personalised for your profile, at the current simulated time.</p>
+      <button class="btn btn-primary" id="plan-btn" onclick="planJourney()">Get my recommendation</button>
+      <div id="result"></div>
+    </div>
   </div>
 
 </div>
 
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 
 const TRANSPORT_OPTIONS = [
-  {
-    id: 'mrt',
-    label: 'MRT / LRT',
-    icon: '🚇'
-  },
-  {
-    id: 'bus',
-    label: 'Bus',
-    icon: '🚌'
-  },
-  {
-    id: 'walk',
-    label: 'Walk',
-    icon: '🚶'
-  },
-  {
-    id: 'taxi',
-    label: 'Taxi / Ride-hail',
-    icon: '🚕'
-  },
-  {
-    id: 'cycling',
-    label: 'Cycling',
-    icon: '🚲'
-  }
+  { id: 'mrt', label: 'MRT / LRT', icon: '🚇' },
+  { id: 'bus', label: 'Bus', icon: '🚌' },
+  { id: 'walk', label: 'Walk', icon: '🚶' },
+  { id: 'taxi', label: 'Taxi / Ride-hail', icon: '🚕' },
+  { id: 'cycling', label: 'Cycling', icon: '🚲' },
 ];
-
-
 const ACCESSIBILITY_SUGGESTIONS = [
-  'Step-free access',
-  'Wheelchair accessible',
-  'Lift priority',
-  'Low floor buses',
-  'Audio announcements',
-  'Visual guides'
+  'Step-free access', 'Wheelchair accessible', 'Lift priority',
+  'Low floor buses', 'Audio announcements', 'Visual guides',
 ];
-
-
 const TRAVELLING_OPTIONS = [
-  'Elderly parent',
-  'Young child / infant',
-  'Person with disability',
-  'Pregnant companion',
-  'Other'
+  'Elderly parent', 'Young child / infant', 'Person with disability',
+  'Pregnant companion', 'Other',
 ];
-
 
 let selectedTransport = new Set();
 let selectedAccessibility = new Set();
 let selectedTravelling = new Set();
 
-
-/* -----------------------------
-   TRANSPORT OPTIONS
------------------------------ */
-
 function renderTransportGrid() {
-
   const grid = document.getElementById('transport-grid');
-
   grid.innerHTML = '';
-
   TRANSPORT_OPTIONS.forEach(opt => {
-
     const isSel = selectedTransport.has(opt.id);
-
     const div = document.createElement('div');
-
-    div.className =
-      'chip-card' +
-      (isSel ? ' selected' : '');
-
-    div.innerHTML =
-      `<div class="icon">${opt.icon}</div>` +
-      `<div class="label">${opt.label}</div>` +
-      `<div class="selected-tag">✓ Selected</div>`;
-
+    div.className = 'chip-card' + (isSel ? ' selected' : '');
+    div.innerHTML = `<div class="icon">${opt.icon}</div><div class="label">${opt.label}</div><div class="selected-tag">✓ Selected</div>`;
     div.onclick = () => {
-
-      if (selectedTransport.has(opt.id)) {
-        selectedTransport.delete(opt.id);
-      } else {
-        selectedTransport.add(opt.id);
-      }
-
+      if (selectedTransport.has(opt.id)) selectedTransport.delete(opt.id);
+      else selectedTransport.add(opt.id);
       renderTransportGrid();
-
     };
-
     grid.appendChild(div);
-
   });
-
 }
-
-
-/* -----------------------------
-   ACCESSIBILITY OPTIONS
------------------------------ */
 
 function renderAccessibilityPills() {
-
-  const row =
-    document.getElementById('accessibility-pills');
-
+  const row = document.getElementById('accessibility-pills');
   row.innerHTML = '';
-
   ACCESSIBILITY_SUGGESTIONS.forEach(label => {
-
-    const isSel =
-      selectedAccessibility.has(label);
-
-    const pill =
-      document.createElement('div');
-
-    pill.className =
-      'pill' +
-      (isSel ? ' selected' : '');
-
+    const isSel = selectedAccessibility.has(label);
+    const pill = document.createElement('div');
+    pill.className = 'pill' + (isSel ? ' selected' : '');
     pill.textContent = label;
-
     pill.onclick = () => {
-
-      if (selectedAccessibility.has(label)) {
-        selectedAccessibility.delete(label);
-      } else {
-        selectedAccessibility.add(label);
-      }
-
+      if (selectedAccessibility.has(label)) selectedAccessibility.delete(label);
+      else selectedAccessibility.add(label);
       renderAccessibilityPills();
-
     };
-
     row.appendChild(pill);
-
   });
-
 }
-
-
-/* -----------------------------
-   TRAVELLING WITH OPTIONS
------------------------------ */
 
 function renderTravellingChecks() {
-
-  const container =
-    document.getElementById('travelling-checks');
-
+  const container = document.getElementById('travelling-checks');
   container.innerHTML = '';
-
   TRAVELLING_OPTIONS.forEach(label => {
-
-    const isSel =
-      selectedTravelling.has(label);
-
-    const row =
-      document.createElement('div');
-
-    row.className =
-      'check-row' +
-      (isSel ? ' selected' : '');
-
-    row.innerHTML =
-      `<div class="check-box">` +
-      `${isSel ? '✓' : ''}` +
-      `</div>` +
-      `<span class="label">${label}</span>`;
-
+    const isSel = selectedTravelling.has(label);
+    const row = document.createElement('div');
+    row.className = 'check-row' + (isSel ? ' selected' : '');
+    row.innerHTML = `<div class="check-box">${isSel ? '✓' : ''}</div><span class="label">${label}</span>`;
     row.onclick = () => {
-
-      if (selectedTravelling.has(label)) {
-        selectedTravelling.delete(label);
-      } else {
-        selectedTravelling.add(label);
-      }
-
+      if (selectedTravelling.has(label)) selectedTravelling.delete(label);
+      else selectedTravelling.add(label);
       renderTravellingChecks();
-
     };
-
     container.appendChild(row);
-
   });
-
 }
-
-
-/* -----------------------------
-   SCREEN NAVIGATION
------------------------------ */
 
 function showScreen(name) {
-
-  document
-    .querySelectorAll('.screen')
-    .forEach(el =>
-      el.classList.remove('active')
-    );
-
-  document
-    .getElementById('screen-' + name)
-    .classList.add('active');
-
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
 }
 
+function editProfile() { showScreen('form'); }
 
-function editProfile() {
-
-  showScreen('form');
-
-}
-
-
-function goToJourney() {
-
+async function goToJourney() {
   showScreen('journey');
-
-  loadWorld();
-
+  initMap();
+  await loadWorld();
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+  }, 50);
 }
-
-
-/* -----------------------------
-   SAVE PROFILE
------------------------------ */
 
 async function saveProfile() {
-
-  const errorBox =
-    document.getElementById('form-error');
-
-  const home_location =
-    document
-      .getElementById('home_location')
-      .value
-      .trim();
-
+  const errorBox = document.getElementById('form-error');
+  const home_location = document.getElementById('home_location').value.trim();
 
   if (!home_location) {
-
-    errorBox.textContent =
-      'Enter a home location first.';
-
+    errorBox.textContent = 'Enter a home location first.';
     errorBox.style.display = 'block';
-
     return;
-
   }
-
-
   if (selectedTransport.size === 0) {
-
-    errorBox.textContent =
-      'Select at least one preferred transport option.';
-
+    errorBox.textContent = 'Select at least one preferred transport option.';
     errorBox.style.display = 'block';
-
     return;
-
   }
-
-
   errorBox.style.display = 'none';
 
-
-  const customAccessibility =
-    document
-      .getElementById('accessibility_custom')
-      .value
-      .trim();
-
-
-  const accessibilityParts =
-    [...selectedAccessibility];
-
-
-  if (customAccessibility) {
-    accessibilityParts.push(customAccessibility);
-  }
-
+  const customAccessibility = document.getElementById('accessibility_custom').value.trim();
+  const accessibilityParts = [...selectedAccessibility];
+  if (customAccessibility) accessibilityParts.push(customAccessibility);
 
   const payload = {
-
-    home_location:
-      home_location,
-
-    transport_preference:
-      [...selectedTransport].join(','),
-
-    accessibility_needs:
-      accessibilityParts.join(', '),
-
-    travelling_with:
-      [...selectedTravelling].join(', ')
-
+    home_location: home_location,
+    transport_preference: [...selectedTransport].join(','),
+    accessibility_needs: accessibilityParts.join(', '),
+    travelling_with: [...selectedTravelling].join(', '),
   };
 
-
   try {
+    const res = await fetch('/api/attendee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) {
+      errorBox.textContent = data.error;
+      errorBox.style.display = 'block';
+      return;
+    }
+    showSummary(payload);
+    showScreen('saved');
+  } catch (err) {
+    console.error('Profile save failed:', err);
+    errorBox.textContent = 'Could not reach the server.';
+    errorBox.style.display = 'block';
+  }
+}
 
-    const res = await fetch(
-      '/api/attendee',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      }
-    );
+function transportLabel(id) {
+  const opt = TRANSPORT_OPTIONS.find(o => o.id === id);
+  return opt ? opt.label.split(' / ')[0].split(' ')[0] : id;
+}
 
+function showSummary(payload) {
+  document.getElementById('summary-home').textContent = payload.home_location;
+  document.getElementById('summary-transport').textContent =
+    payload.transport_preference
+      .split(',')
+      .map(transportLabel)
+      .join(' · ') || 'None specified';
+  document.getElementById('summary-accessibility').textContent = payload.accessibility_needs || 'None specified';
+  document.getElementById('summary-travelling').textContent = payload.travelling_with || 'None specified';
+}
+
+async function loadProfile() {
+  try {
+    const res = await fetch('/api/attendee');
+    const profile = await res.json();
+    if (profile) {
+      document.getElementById('home_location').value = profile.home_location || '';
+      selectedTransport = new Set((profile.transport_preference || '').split(',').filter(Boolean));
+      selectedAccessibility = new Set();
+      const accessParts = (profile.accessibility_needs || '').split(',').map(s => s.trim()).filter(Boolean);
+      accessParts.forEach(p => { if (ACCESSIBILITY_SUGGESTIONS.includes(p)) selectedAccessibility.add(p); });
+      const customLeftover = accessParts.filter(p => !ACCESSIBILITY_SUGGESTIONS.includes(p));
+      document.getElementById('accessibility_custom').value = customLeftover.join(', ');
+      selectedTravelling = new Set((profile.travelling_with || '').split(',').map(s => s.trim()).filter(Boolean));
+      renderTransportGrid();
+      renderAccessibilityPills();
+      renderTravellingChecks();
+      showSummary(profile);
+    }
+  } catch (err) {
+    console.log('No saved profile yet.');
+  }
+}
+
+function updateClockDisplay(data) {
+  document.getElementById('clock-time').textContent = data.current_time_display;
+}
+
+async function loadWorld() {
+  const grid = document.getElementById('node-grid');
+  try {
+    const res = await fetch('/api/world', {
+      cache: 'no-store'
+    });
+    if (!res.ok) {
+      throw new Error(`World API returned HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    updateClockDisplay(data);
+    grid.innerHTML = '';
+    for (const [id, node] of Object.entries(data.nodes)) {
+      const pct = Math.round((node.load / node.capacity) * 100);
+      const barColor = node.congestion === 'high' ? 'var(--red)' : node.congestion === 'moderate' ? 'var(--amber)' : 'var(--teal)';
+      const row = document.createElement('div');
+      row.className = 'node-row';
+      row.innerHTML = `
+        <div class="node-info">
+          <p class="node-name">${node.name}</p>
+          <div class="node-bar-track"><div class="node-bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
+          <span class="tag ${node.congestion}">${node.congestion}</span>
+        </div>
+        <div class="node-pct">${pct}%</div>
+      `;
+      grid.appendChild(row);
+    }
+  } catch (err) {
+    console.error('Could not load transport data:', err);
+    grid.innerHTML = '<p style="color: var(--red);">Could not load transport data.</p>';
+  }
+}
+
+async function fastForward(minutes) {
+  try {
+    const res = await fetch('/api/fast-forward', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ minutes: minutes }),
+    });
 
     const data = await res.json();
 
-
-    if (data.error) {
-
-      errorBox.textContent =
-        data.error;
-
-      errorBox.style.display =
-        'block';
-
+    if (!res.ok || data.error) {
+      console.error(
+        'Fast forward failed:',
+        data.error || `HTTP ${res.status}`
+      );
       return;
-
     }
-
-
-    showSummary(payload);
-
-    showScreen('saved');
-
-
-  } catch (err) {
-
-    console.error(
-      'Profile save failed:',
-      err
-    );
-
-    errorBox.textContent =
-      'Could not reach the server.';
-
-    errorBox.style.display =
-      'block';
-
-  }
-
-}
-
-
-/* -----------------------------
-   TRANSPORT LABEL
------------------------------ */
-
-function transportLabel(id) {
-
-  const opt =
-    TRANSPORT_OPTIONS.find(
-      o => o.id === id
-    );
-
-  return opt
-    ? opt.label.split(' / ')[0].split(' ')[0]
-    : id;
-
-}
-
-
-/* -----------------------------
-   PROFILE SUMMARY
------------------------------ */
-
-function showSummary(payload) {
-
-  document
-    .getElementById('summary-home')
-    .textContent =
-      payload.home_location;
-
-
-  document
-    .getElementById('summary-transport')
-    .textContent =
-      payload
-        .transport_preference
-        .split(',')
-        .map(transportLabel)
-        .join(' · ') ||
-      'None specified';
-
-
-  document
-    .getElementById('summary-accessibility')
-    .textContent =
-      payload.accessibility_needs ||
-      'None specified';
-
-
-  document
-    .getElementById('summary-travelling')
-    .textContent =
-      payload.travelling_with ||
-      'None specified';
-
-}
-
-
-/* -----------------------------
-   LOAD PROFILE
------------------------------ */
-
-async function loadProfile() {
-
-  try {
-
-    const res =
-      await fetch('/api/attendee');
-
-    const profile =
-      await res.json();
-
-
-    if (profile) {
-
-      document
-        .getElementById('home_location')
-        .value =
-          profile.home_location || '';
-
-
-      selectedTransport =
-        new Set(
-          (profile.transport_preference || '')
-            .split(',')
-            .filter(Boolean)
-        );
-
-
-      selectedAccessibility =
-        new Set();
-
-
-      const accessParts =
-        (profile.accessibility_needs || '')
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean);
-
-
-      accessParts.forEach(p => {
-
-        if (
-          ACCESSIBILITY_SUGGESTIONS
-            .includes(p)
-        ) {
-          selectedAccessibility.add(p);
-        }
-
-      });
-
-
-      const customLeftover =
-        accessParts.filter(
-          p =>
-            !ACCESSIBILITY_SUGGESTIONS
-              .includes(p)
-        );
-
-
-      document
-        .getElementById('accessibility_custom')
-        .value =
-          customLeftover.join(', ');
-
-
-      selectedTravelling =
-        new Set(
-          (profile.travelling_with || '')
-            .split(',')
-            .map(s => s.trim())
-            .filter(Boolean)
-        );
-
-
-      renderTransportGrid();
-      renderAccessibilityPills();
-      renderTravellingChecks();
-
-      showSummary(profile);
-
-    }
-
-  } catch (err) {
-
-    console.log(
-      'No saved profile yet.'
-    );
-
-  }
-
-}
-
-
-/* -----------------------------
-   CLOCK
------------------------------ */
-
-function updateClockDisplay(data) {
-
-  document
-    .getElementById('clock-time')
-    .textContent =
-      data.current_time_display;
-
-}
-
-
-/* -----------------------------
-   LOAD TRANSPORT WORLD
------------------------------ */
-
-async function loadWorld() {
-
-  const grid =
-    document.getElementById('node-grid');
-
-
-  try {
-
-    const res =
-      await fetch('/api/world');
-
-
-    const data =
-      await res.json();
-
 
     updateClockDisplay(data);
-
-
-    grid.innerHTML = '';
-
-
-    for (
-      const [id, node]
-      of Object.entries(data.nodes)
-    ) {
-
-      const pct =
-        Math.round(
-          (node.load / node.capacity) * 100
-        );
-
-
-      const barColor =
-        node.congestion === 'high'
-          ? 'var(--red)'
-          : node.congestion === 'moderate'
-            ? 'var(--amber)'
-            : 'var(--teal)';
-
-
-      const row =
-        document.createElement('div');
-
-
-      row.className =
-        'node-row';
-
-
-      row.innerHTML = `
-
-        <div class="node-info">
-
-          <p class="node-name">
-            ${node.name}
-          </p>
-
-          <div class="node-bar-track">
-
-            <div
-              class="node-bar-fill"
-              style="
-                width:${pct}%;
-                background:${barColor};
-              "
-            ></div>
-
-          </div>
-
-          <span class="tag ${node.congestion}">
-            ${node.congestion}
-          </span>
-
-        </div>
-
-        <div class="node-pct">
-          ${pct}%
-        </div>
-
-      `;
-
-
-      grid.appendChild(row);
-
-    }
-
-
-  } catch (err) {
-
-    console.error(
-      'Could not load transport data:',
-      err
-    );
-
-    grid.innerHTML =
-      '<p style="color: var(--red);">' +
-      'Could not load transport data.' +
-      '</p>';
-
-  }
-
-}
-
-
-/* -----------------------------
-   FAST FORWARD
------------------------------ */
-
-async function fastForward(minutes) {
-
-  try {
-
-    const res =
-      await fetch(
-        '/api/fast-forward',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
-          body: JSON.stringify({
-            minutes: minutes
-          })
-        }
-      );
-
-
-    const data =
-      await res.json();
-
-
-    if (!data.error) {
-      updateClockDisplay(data);
-    }
-
-
     await loadWorld();
-
-
   } catch (err) {
-
-    console.error(
-      'Fast forward failed:',
-      err
-    );
-
+    console.error('Fast forward failed:', err);
   }
-
 }
-
-
-/* -----------------------------
-   RESET TIME
------------------------------ */
 
 async function resetTime() {
+  const result = document.getElementById('result');
 
   try {
+    const res = await fetch('/api/reset-time', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store'
+    });
 
-    const res =
-      await fetch(
-        '/api/reset-time',
-        {
-          method: 'POST'
-        }
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      console.error(
+        'Reset time failed:',
+        data.error || `HTTP ${res.status}`
       );
-
-
-    const data =
-      await res.json();
-
-
-    if (!data.error) {
-      updateClockDisplay(data);
+      return;
     }
 
-
+    // The server has rebuilt the simulated world. Render the exact
+    // reset state returned by the server rather than relying on stale
+    // browser values.
+    updateClockDisplay(data);
     await loadWorld();
 
+    // Reset starts a completely fresh journey/prediction state.
+    // Remove the previous recommendation and route from the UI.
+    result.innerHTML = '';
+    result.textContent = '';
+    result.style.display = 'none';
+    result.classList.remove('error');
 
+    drawRoute(null);
+
+    if (map) {
+      setTimeout(() => map.invalidateSize(), 50);
+    }
   } catch (err) {
-
-    console.error(
-      'Reset time failed:',
-      err
-    );
-
+    console.error('Reset time failed:', err);
   }
-
 }
 
+/* -----------------------------
+   ROUTE MAP (Leaflet + OpenStreetMap, real coordinates)
+----------------------------- */
+
+const NODE_COORDS = {
+  stadium_mrt: [1.30284, 103.87535],
+  kallang_mrt: [1.3114865, 103.8713507],
+  mountbatten_mrt: [1.3060844, 103.8831531],
+  nicoll_highway_mrt: [1.3002063, 103.8634707],
+  bus_hub: [1.3111679, 103.871404],
+  taxi_ride_hail: [1.3035, 103.8757],
+};
+const NODE_LABELS = {
+  stadium_mrt: 'Stadium MRT',
+  kallang_mrt: 'Kallang MRT',
+  mountbatten_mrt: 'Mountbatten MRT',
+  nicoll_highway_mrt: 'Nicoll Highway MRT',
+  bus_hub: 'Kallang Bus Interchange',
+  taxi_ride_hail: 'Taxi / ride-hail pickup',
+};
+const STADIUM_COORDS = [1.304013, 103.874843];
+
+let map = null;
+let stadiumMarker = null;
+let nodeMarkers = {};
+let routeLine = null;
+
+function initMap() {
+  if (map) return;
+  map = L.map('route-map', { zoomControl: false }).setView(STADIUM_COORDS, 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  stadiumMarker = L.circleMarker(STADIUM_COORDS, {
+    radius: 10, color: '#1E2A2A', fillColor: '#1E2A2A', fillOpacity: 1, weight: 2,
+  }).addTo(map).bindPopup('National Stadium');
+
+  for (const [id, coords] of Object.entries(NODE_COORDS)) {
+    nodeMarkers[id] = L.circleMarker(coords, {
+      radius: 8, color: '#1FA98F', fillColor: '#1FA98F', fillOpacity: 0.85, weight: 2,
+    }).addTo(map).bindPopup(NODE_LABELS[id]);
+  }
+}
+
+// Node/gate matching now happens server-side (see app.py's
+// match_node_and_gate) so the same logic isn't duplicated in two
+// places. This function just draws whatever the server determined:
+// a real walking route if ORS_API_KEY is configured and the call
+// succeeded, or a dashed straight-line estimate as a graceful
+// fallback if not.
+function drawRoute(routeInfo) {
+  if (!map) return;
+  const note = document.getElementById('route-mode-note');
+
+  Object.values(nodeMarkers).forEach(m => m.setStyle({ color: '#1FA98F', fillColor: '#1FA98F', radius: 8 }));
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+
+  if (!routeInfo || !routeInfo.node_id) {
+    note.textContent = 'No specific station mentioned in this recommendation.';
+    return;
+  }
+
+  if (!nodeMarkers[routeInfo.node_id] || !NODE_COORDS[routeInfo.node_id]) {
+    note.textContent = 'The server returned a route node that is not on this map.';
+    return;
+  }
+
+  if (!nodeMarkers[routeInfo.node_id] || !NODE_COORDS[routeInfo.node_id]) {
+    note.textContent = 'The server returned a route node that is not on this map.';
+    return;
+  }
+
+  nodeMarkers[routeInfo.node_id].setStyle({ color: '#E5484D', fillColor: '#E5484D', radius: 11 });
+
+  if (routeInfo.geometry && routeInfo.geometry.length > 1) {
+    const color = routeInfo.profile === 'wheelchair' ? '#7F77DD' : '#3D6FF2';
+    routeLine = L.polyline(routeInfo.geometry, { color: color, weight: 5, opacity: 0.85 }).addTo(map);
+    note.textContent = routeInfo.profile === 'wheelchair'
+      ? 'Accessible walking route (avoids stairs and steep paths).'
+      : 'Real walking route.';
+  } else {
+    routeLine = L.polyline([NODE_COORDS[routeInfo.node_id], STADIUM_COORDS], {
+      color: '#3D6FF2', weight: 4, opacity: 0.6, dashArray: '6 8',
+    }).addTo(map);
+    note.textContent = 'Straight-line estimate — set ORS_API_KEY in .env for a real walking route.';
+  }
+
+  map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+
+  if (routeInfo.gate) {
+    const label = routeInfo.gate.charAt(0).toUpperCase() + routeInfo.gate.slice(1);
+    stadiumMarker.bindPopup('Head to ' + label).openPopup();
+  }
+}
 
 /* -----------------------------
    LLM JOURNEY RECOMMENDATION
 ----------------------------- */
 
-async function planJourney() {
+function formatRecommendation(text) {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
-  const btn =
-    document.getElementById('plan-btn');
+  const withInline = escaped
+    .replace(/^#{1,3}\s*(.+)$/gm, '<h4>$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^---+$/gm, '');
 
-  const result =
-    document.getElementById('result');
-
-
-  btn.disabled = true;
-
-  btn.textContent =
-    'Thinking…';
-
-
-  result.style.display =
-    'none';
-
-  result.classList.remove(
-    'error'
-  );
-
-
-  try {
-
-    const res =
-      await fetch(
-        '/api/plan',
-        {
-          method: 'POST'
-        }
-      );
-
-
-    const data =
-      await res.json();
-
-
-    if (data.error) {
-
-      result.textContent =
-        'Something went wrong: ' +
-        data.error;
-
-      result.classList.add(
-        'error'
-      );
-
-    } else {
-
-      /*
-       * Display the LLM response directly.
-       *
-       * The route sketch and marked.js
-       * dependency have been removed.
-       */
-
-      result.textContent =
-        data.recommendation;
-
-    }
-
-
-    result.style.display =
-      'block';
-
-
-  } catch (err) {
-
-    console.error(
-      'Plan request failed:',
-      err
-    );
-
-
-    result.textContent =
-      'Could not reach the server.';
-
-
-    result.classList.add(
-      'error'
-    );
-
-
-    result.style.display =
-      'block';
-
-  } finally {
-
-    btn.disabled = false;
-
-    btn.textContent =
-      'Get my recommendation';
-
-  }
-
+  return withInline
+    .split(/\n{2,}/)
+    .map(block => block.trim())
+    .filter(Boolean)
+    .map(block => (block.startsWith('<h4>') ? block : `<p>${block}</p>`))
+    .join('');
 }
 
+async function planJourney() {
+  const btn = document.getElementById('plan-btn');
+  const result = document.getElementById('result');
 
-/* -----------------------------
-   INITIALISE APP
------------------------------ */
+  btn.disabled = true;
+  btn.textContent = 'Thinking…';
+  result.style.display = 'none';
+  result.classList.remove('error');
+
+  try {
+    // Server is the source of truth for the simulated clock and crowd state.
+    await loadWorld();
+
+    const res = await fetch('/api/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store'
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      result.textContent =
+        'Something went wrong: ' + (data.error || `HTTP ${res.status}`);
+      result.classList.add('error');
+    } else {
+      result.innerHTML = formatRecommendation(data.recommendation);
+
+      // The server may return route_info when route matching is available.
+      if (data.route_info) {
+        drawRoute(data.route_info);
+      } else if (data.node_id) {
+        drawRoute({
+          node_id: data.node_id,
+          gate: data.gate,
+          geometry: data.geometry,
+          profile: data.profile
+        });
+      } else {
+        drawRoute(null);
+      }
+
+      if (data.current_time_display) {
+        updateClockDisplay(data);
+      }
+
+      await loadWorld();
+    }
+
+    result.style.display = 'block';
+  } catch (err) {
+    console.error('Plan request failed:', err);
+    result.textContent = 'Could not reach the server.';
+    result.classList.add('error');
+    result.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get my recommendation';
+  }
+}
 
 renderTransportGrid();
-
 renderAccessibilityPills();
-
 renderTravellingChecks();
-
 loadProfile();
 
-
-/*
- * Refresh transport data every
- * 5 seconds while on journey screen.
- */
-
 setInterval(() => {
-
-  if (
-    document
-      .getElementById('screen-journey')
-      .classList
-      .contains('active')
-  ) {
-
-    loadWorld();
-
-  }
-
+  if (document.getElementById('screen-journey').classList.contains('active')) loadWorld();
 }, 5000);
 
 </script>
