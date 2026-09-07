@@ -95,20 +95,20 @@ Resetting the simulation rebuilds the simulated world so that crowd and predicti
 ## Architecture
 
 ```text
-                         ┌──────────────────────┐
+                         ┌───────────────────────┐
                          │      Web Browser      │
-                         │                      │
+                         │                       │
                          │  Attendee Preferences │
                          │  Simulation Controls  │
                          │  Map / Recommendation │
-                         └──────────┬───────────┘
+                         └──────────┬────────────┘
                                     │
                               HTTP / JSON
                                     │
                                     ▼
                          ┌──────────────────────┐
                          │      Flask App       │
-                         │       app.py          │
+                         │       app.py         │
                          │                      │
                          │ /api/world           │
                          │ /api/attendee        │
@@ -135,15 +135,15 @@ Resetting the simulation rebuilds the simulated world so that crowd and predicti
                          │ Transport nodes          │
                          │ Crowd loads              │
                          │ Congestion               │
-                         │ Event timeline            │
+                         │ Event timeline           │
                          └──────────────────────────┘
 
                          Supporting models
-                         ┌──────────────────────┐
-                         │      models.py       │
+                         ┌───────────────────────┐
+                         │      models.py        │
                          │ Attendee / WorldState │
-                         │ Transport nodes      │
-                         └──────────────────────┘
+                         │ Transport nodes       │
+                         └───────────────────────┘
 ```
 
 ## Project Structure
