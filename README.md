@@ -242,7 +242,15 @@ Make sure the configured AWS identity has permission to invoke the Bedrock model
 
 If the application expects environment variables for the model or AWS configuration, use the names already defined by the repository's configuration/code rather than committing credentials to source control.
 
-**Never commit AWS access keys, secret keys, `.env` files containing credentials, or other secrets to GitHub.**
+If using a sandbox account, load API keys, secret access key and session ID directly into .env and save before running the application.
+
+```bash
+AWS_ACCESS_KEY_ID="your_api_key"
+AWS_SECRET_ACCESS_KEY="your_access_key"
+AWS_SESSION_TOKEN="your_session_token"
+AWS_REGION=us-east-1
+BEDROCK_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0
+```
 
 ## Running the Application
 
