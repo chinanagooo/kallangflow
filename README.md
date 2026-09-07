@@ -95,20 +95,20 @@ Resetting the simulation rebuilds the simulated world so that crowd and predicti
 ## Architecture
 
 ```text
-                         ┌───────────────────────┐
+                         ┌──────────────────────┐
                          │      Web Browser      │
-                         │                       │
+                         │                      │
                          │  Attendee Preferences │
                          │  Simulation Controls  │
                          │  Map / Recommendation │
-                         └──────────┬────────────┘
+                         └──────────┬───────────┘
                                     │
                               HTTP / JSON
                                     │
                                     ▼
                          ┌──────────────────────┐
                          │      Flask App       │
-                         │       app.py         │
+                         │       app.py          │
                          │                      │
                          │ /api/world           │
                          │ /api/attendee        │
@@ -135,15 +135,15 @@ Resetting the simulation rebuilds the simulated world so that crowd and predicti
                          │ Transport nodes          │
                          │ Crowd loads              │
                          │ Congestion               │
-                         │ Event timeline           │
+                         │ Event timeline            │
                          └──────────────────────────┘
 
                          Supporting models
-                         ┌───────────────────────┐
-                         │      models.py        │
+                         ┌──────────────────────┐
+                         │      models.py       │
                          │ Attendee / WorldState │
-                         │ Transport nodes       │
-                         └───────────────────────┘
+                         │ Transport nodes      │
+                         └──────────────────────┘
 ```
 
 ## Project Structure
@@ -242,19 +242,58 @@ Make sure the configured AWS identity has permission to invoke the Bedrock model
 
 If the application expects environment variables for the model or AWS configuration, use the names already defined by the repository's configuration/code rather than committing credentials to source control.
 
-If using a sandbox account, load API keys, secret access key and session ID directly into .env and save before running the application.
+**Never commit AWS access keys, secret keys, `.env` files containing credentials, or other secrets to GitHub.**
+
+## Quick Start
+
+### 1. Clone the repository
 
 ```bash
-AWS_ACCESS_KEY_ID="your_api_key"
-AWS_SECRET_ACCESS_KEY="your_access_key"
-AWS_SESSION_TOKEN="your_session_token"
-AWS_REGION=us-east-1
-BEDROCK_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0
+git clone https://github.com/chinanagooo/kallangflow.git
+cd kallangflow
 ```
 
-## Running the Application
+### 2. Create and activate a virtual environment
 
-From the repository root:
+```bash
+python -m venv .venv
+```
+
+#### Windows
+
+```bash
+.venv\\Scripts\\activate
+```
+
+#### macOS / Linux
+
+```bash
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure AWS credentials
+
+KallangFlow uses Amazon Bedrock for its AI recommendation agent.
+
+```bash
+aws configure
+```
+
+Then verify your AWS credentials:
+
+```bash
+aws sts get-caller-identity
+```
+
+Make sure your AWS account has permission to invoke the Bedrock model used by the project.
+
+### 5. Run the application
 
 ```bash
 python app.py
@@ -262,13 +301,30 @@ python app.py
 
 The Flask development server should start locally.
 
-Open the local address shown by Flask in a browser. A common development address is:
+Open the local address shown by Flask in your browser. A common development address is:
 
 ```text
 http://127.0.0.1:5000
 ```
 
 If the repository's current `app.py` specifies another port, use that port instead.
+
+### Complete setup
+
+For convenience, the basic setup is:
+
+```bash
+git clone https://github.com/chinanagooo/kallangflow.git
+cd kallangflow
+python -m venv .venv
+```
+
+Activate the virtual environment, then:
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
 
 ## Using the Application
 
