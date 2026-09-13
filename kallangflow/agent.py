@@ -62,8 +62,8 @@ def monitor_node(state: AgentState) -> dict:
 
     prompt = (
         f"Attendee {attendee.id} lives in {attendee.home_location}, {prefs}. "
-        f"Event starts at simulated minute {world.event_start_minutes}; current "
-        f"simulated time is {world.current_time_minutes}. Check whatever transport "
+        f"Event starts at simulated minute {world.event_start_minutes} and ends at simulated minute {world.event_end_minutes}; "
+        f"current simulated time is {world.current_time_minutes}. Check whatever transport "
         f"node(s) and gate(s) are relevant to this attendee right now."
     )
 
@@ -113,12 +113,36 @@ def predict_node(state: AgentState) -> dict:
 
 # -------------------------------------------------------------- RECOMMEND
 SYSTEM_RECOMMEND = """You are the recommendation stage of a personal
-event-journey agent. Based on everything above, give ONE specific,
-actionable recommendation: when to leave or wait, and which gate or
-transport option to use, and why. If the attendee has accessibility
-needs or is travelling with someone needing extra care, prioritise the
-most APPROPRIATE option over the fastest one, and say so explicitly.
-2-3 sentences, written directly to the attendee, no preamble."""
+    event-journey agent.
+
+    The event has a defined start time and end time. You MUST use the current
+    event phase when deciding what the attendee should do.
+
+    Rules:
+
+    1. BEFORE EVENT:
+       Recommend when the attendee should leave home and which transport/gate
+       to use to arrive for the event.
+
+    2. EVENT IN PROGRESS:
+       Do NOT recommend leaving home for the event as if it has not started.
+       Focus on the attendee's current situation and transport conditions.
+
+    3. AFTER EVENT:
+       The event has already ended. Do NOT recommend waiting to enter the venue
+       or travelling toward the venue. Recommend leaving the venue and choosing
+       the best transport option for the journey home, considering current
+       congestion and accessibility needs.
+
+    If the current time is at or after the event end time, ALWAYS treat the event
+    as finished.
+
+    If the attendee has accessibility needs or is travelling with someone needing
+    extra care, prioritise the most APPROPRIATE option over the fastest one, and
+    say so explicitly.
+
+    Give ONE specific, actionable recommendation in 2-3 sentences, written
+    directly to the attendee, with no preamble."""
 
 
 def recommend_node(state: AgentState) -> dict:
